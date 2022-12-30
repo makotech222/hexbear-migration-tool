@@ -1,0 +1,20 @@
+Will Migrate:
+	user_tag (pronouns) -> person.display_name
+	taglines (from file)
+	custom_emojis (from file)
+	community_settings.hide_from_all -> community.hidden
+	community_settings.read_only -> community.posting_restricted_to_mods
+
+Wont migrate:
+	community_settings.private
+	community_settings.comment_images
+	community_settings.post_links
+	user_ -> inbox_disabled
+	user_ -> has_2fa
+	user_ -> sitemod
+	hexbear.ban_id
+	hexbear.user_ban_id
+
+
+Frontend:
+	Tagline var replacements: <CURRENT_YEAR>, <CURRENT_USER>, <RANDOM:200000:1000000>
