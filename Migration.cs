@@ -3,31 +3,25 @@ using hexbear_migration_tool.lemmy;
 using hexbear_migration_tool.Models.lemmy;
 using Microsoft.EntityFrameworkCore;
 using Svg;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace hexbear_migration_tool
 {
     internal class Migration
     {
-
-        public Migration() { }
+        public Migration()
+        { }
 
         public async Task Start()
         {
             var hexbearDb = new HexbearContext();
             var lemmyDb = new LemmyContext();
             var trans = lemmyDb.Database.BeginTransaction();
-            //this.ApplySchema();
-            //await Taglines(lemmyDb);
-            //await Emojis(lemmyDb);
+            this.ApplySchema();
+            await Taglines(lemmyDb);
+            await Emojis(lemmyDb);
             await CommunitySettings(lemmyDb, hexbearDb);
             trans.Commit();
         }
@@ -102,7 +96,6 @@ namespace hexbear_migration_tool
                         Console.WriteLine(emoji);
                     }
                 }
-
             }
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Emojis: End");
@@ -112,7 +105,8 @@ namespace hexbear_migration_tool
         {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Community Settings: Begin");
             var communitySettings = hexbearDb.CommunitySettings.ToList();
-            foreach (var setting in communitySettings) {
+            foreach (var setting in communitySettings)
+            {
                 var lemmyCommunity = await lemmyDb.Communities.FindAsync(setting.Id);
                 lemmyCommunity.Hidden = setting.HideFromAll;
                 lemmyCommunity.PostingRestrictedToMods = setting.ReadOnly;
@@ -122,6 +116,19 @@ namespace hexbear_migration_tool
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Community Settings: End");
         }
 
+        public async Task Pronouns(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: Begin");
+            var usertags = hexbearDb.UserTags.ToList();
+            foreach (var tag in usertags)
+            {
+                var pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",");
+                
+            }
+            await lemmyDb.SaveChangesAsync();
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: End");
+        }
+
         private void ApplySchema()
         {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Schema: Begin");
@@ -129,28 +136,32 @@ namespace hexbear_migration_tool
             cmd.StartInfo.FileName = "cmd.exe";
             cmd.StartInfo.RedirectStandardInput = true;
             cmd.StartInfo.RedirectStandardOutput = true;
+            cmd.StartInfo.RedirectStandardError = true;
             cmd.StartInfo.CreateNoWindow = true;
             cmd.StartInfo.UseShellExecute = false;
             cmd.Start();
+            cmd.OutputDataReceived += (sender, e) => { Console.WriteLine(e.Data); };
+            cmd.ErrorDataReceived += (sender, e) => { Console.WriteLine(e.Data); };
+            cmd.BeginOutputReadLine();
+            cmd.BeginErrorReadLine();
 
             cmd.StandardInput.WriteLine($"cd {Environment.CurrentDirectory}\\diesel\\hexbear");
             cmd.StandardInput.Flush();
             for (int i = 0; i < 31; i++) // Undo 31 migrations, get us back to where we forked
             {
-                cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._hexbearDatabase.User}:{Program._hexbearDatabase.Password}@{Program._hexbearDatabase.Host}:{Program._hexbearDatabase.Password}/{Program._hexbearDatabase.Database}");
+                cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._hexbearDatabase.User}:{Program._hexbearDatabase.Password}@{Program._hexbearDatabase.Host}:{Program._hexbearDatabase.Port}/{Program._hexbearDatabase.Database}");
                 cmd.StandardInput.Flush();
+                Thread.Sleep(500);
             }
 
             cmd.StandardInput.WriteLine($"cd {Environment.CurrentDirectory}\\diesel\\lemmy");
             cmd.StandardInput.Flush();
-            cmd.StandardInput.WriteLine($"diesel migration run --database-url postgres://{Program._hexbearDatabase.User}:{Program._hexbearDatabase.Password}@{Program._hexbearDatabase.Host}:{Program._hexbearDatabase.Password}/{Program._hexbearDatabase.Database}");
+            cmd.StandardInput.WriteLine($"diesel migration run --database-url postgres://{Program._hexbearDatabase.User}:{Program._hexbearDatabase.Password}@{Program._hexbearDatabase.Host}:{Program._hexbearDatabase.Port}/{Program._hexbearDatabase.Database}");
             cmd.StandardInput.Flush();
 
             cmd.StandardInput.Close();
             cmd.WaitForExit();
-            Console.WriteLine(cmd.StandardOutput.ReadToEnd());
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Schema: End");
-
         }
 
         private void ConvertSvg(string fileName)
@@ -172,11 +183,14 @@ namespace hexbear_migration_tool
     {
         public List<File> files { get; set; }
 
-
         public class File
         {
             public string file { get; set; }
-
         }
+    }
+
+    public class UserTagJSON
+    {
+        public string pronouns { get; set; }
     }
 }

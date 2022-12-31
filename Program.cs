@@ -27,12 +27,6 @@ namespace hexbear_migration_tool
                 User = "postgres",
                 Password = "admin"
             };
-            //_lemmyDatabase = new PostgresDatabase()
-            //{
-            //    Database = "lemmy-for-hexbear",
-            //    User = "postgres",
-            //    Password = "password"
-            //};
             var migration = new Migration();
             await migration.Start();
         }
