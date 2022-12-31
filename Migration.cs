@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Svg;
 using System.Diagnostics;
 using System.Drawing.Imaging;
+using System.Linq;
 using System.Text.Json;
 
 namespace hexbear_migration_tool
@@ -23,6 +24,7 @@ namespace hexbear_migration_tool
             await Taglines(lemmyDb);
             await Emojis(lemmyDb);
             await CommunitySettings(lemmyDb, hexbearDb);
+            await Pronouns(lemmyDb, hexbearDb);
             trans.Commit();
         }
 
@@ -122,8 +124,9 @@ namespace hexbear_migration_tool
             var usertags = hexbearDb.UserTags.ToList();
             foreach (var tag in usertags)
             {
-                var pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",");
-                
+                var pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",") ?? new string[] { "none/use name"};
+                var person = await lemmyDb.People.FindAsync(tag.UserId);
+                person.DisplayName = $"{person.Name} [{String.Join(",", pronouns)}]";
             }
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: End");
@@ -149,14 +152,14 @@ namespace hexbear_migration_tool
             cmd.StandardInput.Flush();
             for (int i = 0; i < 31; i++) // Undo 31 migrations, get us back to where we forked
             {
-                cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._hexbearDatabase.User}:{Program._hexbearDatabase.Password}@{Program._hexbearDatabase.Host}:{Program._hexbearDatabase.Port}/{Program._hexbearDatabase.Database}");
+                cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._lemmyDatabase.User}:{Program._lemmyDatabase.Password}@{Program._lemmyDatabase.Host}:{Program._lemmyDatabase.Port}/{Program._lemmyDatabase.Database}");
                 cmd.StandardInput.Flush();
                 Thread.Sleep(500);
             }
 
             cmd.StandardInput.WriteLine($"cd {Environment.CurrentDirectory}\\diesel\\lemmy");
             cmd.StandardInput.Flush();
-            cmd.StandardInput.WriteLine($"diesel migration run --database-url postgres://{Program._hexbearDatabase.User}:{Program._hexbearDatabase.Password}@{Program._hexbearDatabase.Host}:{Program._hexbearDatabase.Port}/{Program._hexbearDatabase.Database}");
+            cmd.StandardInput.WriteLine($"diesel migration run --database-url postgres://{Program._lemmyDatabase.User}:{Program._lemmyDatabase.Password}@{Program._lemmyDatabase.Host}:{Program._lemmyDatabase.Port}/{Program._lemmyDatabase.Database}");
             cmd.StandardInput.Flush();
 
             cmd.StandardInput.Close();
