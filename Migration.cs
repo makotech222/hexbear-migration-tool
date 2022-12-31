@@ -78,7 +78,7 @@ namespace hexbear_migration_tool
                     {
                         { new StreamContent(stream), "images[]", path }
                     };
-                    var res = await httpClient.PostAsync($"{Program._pictrs_url}/image", content);
+                    var res = await httpClient.PostAsync($"{Program._appSettings.PictrsUrl}/image", content);
                     string response = await res.Content.ReadAsStringAsync();
                     try
                     {
@@ -152,14 +152,14 @@ namespace hexbear_migration_tool
             cmd.StandardInput.Flush();
             for (int i = 0; i < 31; i++) // Undo 31 migrations, get us back to where we forked
             {
-                cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._lemmyDatabase.User}:{Program._lemmyDatabase.Password}@{Program._lemmyDatabase.Host}:{Program._lemmyDatabase.Port}/{Program._lemmyDatabase.Database}");
+                cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._appSettings.LemmyUsername}:{Program._appSettings.LemmyPassword}@{Program._appSettings.LemmyHost}:{Program._appSettings.LemmyPort}/{Program._appSettings.LemmyDatabaseName}");
                 cmd.StandardInput.Flush();
                 Thread.Sleep(500);
             }
 
             cmd.StandardInput.WriteLine($"cd {Environment.CurrentDirectory}\\diesel\\lemmy");
             cmd.StandardInput.Flush();
-            cmd.StandardInput.WriteLine($"diesel migration run --database-url postgres://{Program._lemmyDatabase.User}:{Program._lemmyDatabase.Password}@{Program._lemmyDatabase.Host}:{Program._lemmyDatabase.Port}/{Program._lemmyDatabase.Database}");
+            cmd.StandardInput.WriteLine($"diesel migration run --database-url postgres://{Program._appSettings.LemmyUsername}:{Program._appSettings.LemmyPassword}@{Program._appSettings.LemmyHost}:{Program._appSettings.LemmyPort}/{Program._appSettings.LemmyDatabaseName}");
             cmd.StandardInput.Flush();
 
             cmd.StandardInput.Close();
