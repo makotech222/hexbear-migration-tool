@@ -21,16 +21,6 @@ namespace hexbear_migration_tool
         }
     }
 
-    public class PostgresDatabase
-    {
-        public string Host { get; set; } = "localhost";
-        public string Port { get; set; } = "5432";
-        public string Database { get; set; }
-        public string User { get; set; }
-        public string Password { get; set; }
-    }
-
-
     public class AppSettings
     {
         public string HexbearHost { get; set; }
@@ -45,5 +35,4 @@ namespace hexbear_migration_tool
         public string LemmyPassword { get; set; }
         public string PictrsUrl { get; set; }
     }
-
 }
