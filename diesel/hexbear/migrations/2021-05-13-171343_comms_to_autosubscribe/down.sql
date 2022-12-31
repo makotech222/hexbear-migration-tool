@@ -13,3 +13,7 @@ u.avatar as creator_avatar,
 (select count(*) from community) as number_of_communities
 from site s
 left join user_ u on s.creator_id = u.id;
+
+-- Manual changes for bunker mode changes
+Alter Table public.post
+DROP COLUMN IF EXISTS exempt;
