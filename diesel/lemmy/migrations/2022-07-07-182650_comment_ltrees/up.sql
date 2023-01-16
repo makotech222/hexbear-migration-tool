@@ -75,6 +75,21 @@ from (
 ) as c2
 where ca.comment_id = c2.id;
 
+--custom hexbear work to remove too long comment chains
+SET session_replication_role = 'replica';
+Delete from comment
+where id in (
+	Select Id from (
+		Select id, counted from (
+			Select  array_length(string_to_array(ltree2text(path), '.'),1) as counted, id
+			from comment
+		) as t
+		where t.counted > 150
+	) as a
+);
+SET session_replication_role = 'origin';
+--end custom
+
 -- Create the index
 create index idx_path_gist on comment using gist (path);
 
