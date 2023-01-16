@@ -217,14 +217,14 @@ begin
 end $BODY$;
 
 -- Migrate stats (warning: could take time pending instance size, consider downtime)
-insert into user_fast
-select * from public.user_view
-on conflict (id) do update 
-set 
-number_of_comments = EXCLUDED.number_of_comments,
-number_of_posts = EXCLUDED.number_of_posts,
-post_score = EXCLUDED.post_score,
-comment_score = EXCLUDED.comment_score;
+--insert into user_fast
+--select * from public.user_view
+--on conflict (id) do update 
+--set 
+--number_of_comments = EXCLUDED.number_of_comments,
+--number_of_posts = EXCLUDED.number_of_posts,
+--post_score = EXCLUDED.post_score,
+--comment_score = EXCLUDED.comment_score;
 
 -- Add new triggers
 create trigger refresh_comment

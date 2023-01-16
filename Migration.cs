@@ -12,6 +12,7 @@ namespace hexbear_migration_tool
 {
     internal class Migration
     {
+        private bool _migrate_finished;
         public Migration()
         { }
 
@@ -25,6 +26,8 @@ namespace hexbear_migration_tool
             await Emojis(lemmyDb);
             await CommunitySettings(lemmyDb, hexbearDb);
             await Pronouns(lemmyDb, hexbearDb);
+            //Add update local_person.theme (hexbear doesn't exist)
+            //Update all posts/comments to english?
             trans.Commit();
         }
 
@@ -143,18 +146,29 @@ namespace hexbear_migration_tool
             cmd.StartInfo.CreateNoWindow = true;
             cmd.StartInfo.UseShellExecute = false;
             cmd.Start();
-            cmd.OutputDataReceived += (sender, e) => { Console.WriteLine(e.Data); };
+            cmd.OutputDataReceived += (sender, e) => { 
+                Console.WriteLine(e.Data);
+                if (e?.Data == null)
+                    return;
+                if (e.Data.Contains("Rolling back"))
+                    _migrate_finished = true;
+            };
             cmd.ErrorDataReceived += (sender, e) => { Console.WriteLine(e.Data); };
             cmd.BeginOutputReadLine();
             cmd.BeginErrorReadLine();
 
             cmd.StandardInput.WriteLine($"cd {Environment.CurrentDirectory}\\diesel\\hexbear");
             cmd.StandardInput.Flush();
-            for (int i = 0; i < 31; i++) // Undo 31 migrations, get us back to where we forked
+            for (int i = 0; i < 31; i++) // Undo 31 migrations, get us back to where we forked (add_post_title_to_comments_view)
             {
                 cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._appSettings.LemmyUsername}:{Program._appSettings.LemmyPassword}@{Program._appSettings.LemmyHost}:{Program._appSettings.LemmyPort}/{Program._appSettings.LemmyDatabaseName}");
                 cmd.StandardInput.Flush();
-                Thread.Sleep(500);
+                while (!_migrate_finished)
+                {
+                    Thread.Sleep(500);
+                    cmd.StandardInput.Flush();
+                }
+                _migrate_finished = false;
             }
 
             cmd.StandardInput.WriteLine($"cd {Environment.CurrentDirectory}\\diesel\\lemmy");

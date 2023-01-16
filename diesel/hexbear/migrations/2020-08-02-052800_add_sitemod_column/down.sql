@@ -1,6 +1,6 @@
 
 drop view user_view;
-alter table user_ drop column sitemod;
+alter table user_ DROP COLUMN IF EXISTS sitemod;
 
 -- User
 create view user_view as

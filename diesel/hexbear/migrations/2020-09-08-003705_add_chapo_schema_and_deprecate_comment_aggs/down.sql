@@ -25,9 +25,9 @@ create trigger refresh_community_user_ban
     execute procedure public.refresh_community_user_ban();
 
 -- Rebuild agg table
-insert into comment_aggregates_fast
-select * from comment_aggregates_view
-on conflict (id) do update 
-set score = EXCLUDED.score, upvotes = EXCLUDED.upvotes, 
-downvotes = EXCLUDED.downvotes, hot_rank = EXCLUDED.hot_rank, 
-hot_rank_active = EXCLUDED.hot_rank_active;
+--insert into comment_aggregates_fast
+--select * from comment_aggregates_view
+--on conflict (id) do update 
+--set score = EXCLUDED.score, upvotes = EXCLUDED.upvotes, 
+--downvotes = EXCLUDED.downvotes, hot_rank = EXCLUDED.hot_rank, 
+--hot_rank_active = EXCLUDED.hot_rank_active;

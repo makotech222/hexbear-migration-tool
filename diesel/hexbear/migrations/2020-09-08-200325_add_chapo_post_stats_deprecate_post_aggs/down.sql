@@ -134,11 +134,11 @@ create trigger refresh_community
     for each row
     execute procedure public.refresh_community();
 
-insert into post_aggregates_fast
-select * from post_aggregates_view
-on conflict (id) do update 
-set score = EXCLUDED.score, upvotes = EXCLUDED.upvotes, 
-downvotes = EXCLUDED.downvotes, hot_rank = EXCLUDED.hot_rank, 
-hot_rank_active = EXCLUDED.hot_rank_active,
-number_of_comments = EXCLUDED.number_of_comments,
-newest_activity_time = EXCLUDED.newest_activity_time;
+--insert into post_aggregates_fast
+--select * from post_aggregates_view
+--on conflict (id) do update 
+--set score = EXCLUDED.score, upvotes = EXCLUDED.upvotes, 
+--downvotes = EXCLUDED.downvotes, hot_rank = EXCLUDED.hot_rank, 
+--hot_rank_active = EXCLUDED.hot_rank_active,
+--number_of_comments = EXCLUDED.number_of_comments,
+--newest_activity_time = EXCLUDED.newest_activity_time;

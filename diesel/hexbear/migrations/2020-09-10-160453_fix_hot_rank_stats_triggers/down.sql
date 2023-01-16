@@ -1,2 +1,1 @@
-
-Select 1
+drop index if exists "idx_post_published";
