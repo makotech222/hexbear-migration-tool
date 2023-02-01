@@ -51,8 +51,6 @@ public partial class Post
 
     public virtual ICollection<CommentLike> CommentLikes { get; } = new List<CommentLike>();
 
-    public virtual ICollection<Comment> Comments { get; } = new List<Comment>();
-
     public virtual Community Community { get; set; }
 
     public virtual Person Creator { get; set; }

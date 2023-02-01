@@ -11,7 +11,7 @@ public partial class ModFeaturePost
 
     public int PostId { get; set; }
 
-    public bool Featured { get; set; }
+    public bool? Featured { get; set; }
 
     public DateTime When { get; set; }
 

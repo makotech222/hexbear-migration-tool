@@ -1,7 +1,9 @@
-﻿using hexbear_migration_tool.Models.lemmy;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
-namespace hexbear_migration_tool.lemmy;
+namespace hexbear_migration_tool.Models.lemmy;
 
 public partial class LemmyContext : DbContext
 {
@@ -143,12 +145,18 @@ public partial class LemmyContext : DbContext
     public virtual DbSet<Tagline> Taglines { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseNpgsql(Program._lemmyConnectionString);
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=localhost;Database=hexbear-prod-new;Username=lemmy;Password=password");
+        var dataSource = dataSourceBuilder.Build();
+        optionsBuilder.UseNpgsql(dataSource);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+
         modelBuilder
             .HasPostgresExtension("ltree")
+            .HasPostgresExtension("pg_stat_statements")
             .HasPostgresExtension("pgcrypto");
 
         modelBuilder.Entity<Activity>(entity =>
@@ -275,16 +283,6 @@ public partial class LemmyContext : DbContext
 
             entity.ToTable("comment");
 
-            entity.HasIndex(e => e.ApId, "idx_comment_ap_id").IsUnique();
-
-            entity.HasIndex(e => e.CreatorId, "idx_comment_creator");
-
-            entity.HasIndex(e => e.PostId, "idx_comment_post");
-
-            entity.HasIndex(e => e.Published, "idx_comment_published").IsDescending();
-
-            entity.HasIndex(e => e.Path, "idx_path_gist").HasMethod("gist");
-
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ApId)
                 .IsRequired()
@@ -315,18 +313,10 @@ public partial class LemmyContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated");
 
-            entity.HasOne(d => d.Creator).WithMany(p => p.Comments)
-                .HasForeignKey(d => d.CreatorId)
-                .HasConstraintName("comment_creator_id_fkey");
-
             entity.HasOne(d => d.Language).WithMany(p => p.Comments)
                 .HasForeignKey(d => d.LanguageId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("comment_language_id_fkey");
-
-            entity.HasOne(d => d.Post).WithMany(p => p.Comments)
-                .HasForeignKey(d => d.PostId)
-                .HasConstraintName("comment_post_id_fkey");
         });
 
         modelBuilder.Entity<CommentAggregate>(entity =>
@@ -967,19 +957,11 @@ public partial class LemmyContext : DbContext
                 .HasDefaultValueSql("true")
                 .HasColumnName("hide_modlog_mod_names");
             entity.Property(e => e.LegalInformation).HasColumnName("legal_information");
-            entity.Property(e => e.OpenRegistration)
-                .IsRequired()
-                .HasDefaultValueSql("true")
-                .HasColumnName("open_registration");
             entity.Property(e => e.PrivateInstance).HasColumnName("private_instance");
             entity.Property(e => e.Published)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("published");
-            entity.Property(e => e.RequireApplication)
-                .IsRequired()
-                .HasDefaultValueSql("true")
-                .HasColumnName("require_application");
             entity.Property(e => e.RequireEmailVerification).HasColumnName("require_email_verification");
             entity.Property(e => e.SiteId).HasColumnName("site_id");
             entity.Property(e => e.SiteSetup).HasColumnName("site_setup");
@@ -987,6 +969,12 @@ public partial class LemmyContext : DbContext
             entity.Property(e => e.Updated)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated");
+
+            entity.Property(e => e.RegistrationMode).HasColumnName("registration_mode")
+            .HasConversion(
+                v => v.ToString(),
+                v => (registration_mode_enum)Enum.Parse(typeof(registration_mode_enum),v)
+                );
 
             entity.HasOne(d => d.Site).WithOne(p => p.LocalSite)
                 .HasForeignKey<LocalSite>(d => d.SiteId)
@@ -1265,7 +1253,10 @@ public partial class LemmyContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("nextval('mod_sticky_post_id_seq'::regclass)")
                 .HasColumnName("id");
-            entity.Property(e => e.Featured).HasColumnName("featured");
+            entity.Property(e => e.Featured)
+                .IsRequired()
+                .HasDefaultValueSql("true")
+                .HasColumnName("featured");
             entity.Property(e => e.IsFeaturedCommunity)
                 .IsRequired()
                 .HasDefaultValueSql("true")
@@ -1759,13 +1750,21 @@ public partial class LemmyContext : DbContext
 
             entity.ToTable("post_aggregates");
 
-            entity.HasIndex(e => e.Comments, "idx_post_aggregates_comments").IsDescending();
+            entity.HasIndex(e => new { e.FeaturedCommunity, e.Comments }, "idx_post_aggregates_featured_community_comments").IsDescending();
 
-            entity.HasIndex(e => e.NewestCommentTime, "idx_post_aggregates_newest_comment_time").IsDescending();
+            entity.HasIndex(e => new { e.FeaturedCommunity, e.NewestCommentTime }, "idx_post_aggregates_featured_community_newest_comment_time").IsDescending();
 
-            entity.HasIndex(e => e.Published, "idx_post_aggregates_published").IsDescending();
+            entity.HasIndex(e => new { e.FeaturedCommunity, e.Published }, "idx_post_aggregates_featured_community_published").IsDescending();
 
-            entity.HasIndex(e => e.Score, "idx_post_aggregates_score").IsDescending();
+            entity.HasIndex(e => new { e.FeaturedCommunity, e.Score }, "idx_post_aggregates_featured_community_score").IsDescending();
+
+            entity.HasIndex(e => new { e.FeaturedLocal, e.Comments }, "idx_post_aggregates_featured_local_comments").IsDescending();
+
+            entity.HasIndex(e => new { e.FeaturedLocal, e.NewestCommentTime }, "idx_post_aggregates_featured_local_newest_comment_time").IsDescending();
+
+            entity.HasIndex(e => new { e.FeaturedLocal, e.Published }, "idx_post_aggregates_featured_local_published").IsDescending();
+
+            entity.HasIndex(e => new { e.FeaturedLocal, e.Score }, "idx_post_aggregates_featured_local_score").IsDescending();
 
             entity.HasIndex(e => e.PostId, "post_aggregates_post_id_key").IsUnique();
 
@@ -2178,7 +2177,5 @@ public partial class LemmyContext : DbContext
         OnModelCreatingPartial(modelBuilder);
     }
 
-    private void OnModelCreatingPartial(ModelBuilder modelBuilder) {
-
-    }
+    partial void OnModelCreatingPartial(ModelBuilder builder);
 }

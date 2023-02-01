@@ -13,15 +13,11 @@ public partial class LocalSite
 
     public bool? EnableDownvotes { get; set; }
 
-    public bool? OpenRegistration { get; set; }
-
     public bool? EnableNsfw { get; set; }
 
     public bool CommunityCreationAdminOnly { get; set; }
 
     public bool RequireEmailVerification { get; set; }
-
-    public bool? RequireApplication { get; set; }
 
     public string ApplicationQuestion { get; set; }
 
@@ -55,6 +51,8 @@ public partial class LocalSite
 
     public DateTime? Updated { get; set; }
 
+    public registration_mode_enum RegistrationMode { get; set; }
+
     public virtual ICollection<CustomEmoji> CustomEmojis { get; } = new List<CustomEmoji>();
 
     public virtual LocalSiteRateLimit LocalSiteRateLimit { get; set; }
@@ -62,4 +60,11 @@ public partial class LocalSite
     public virtual Site Site { get; set; }
 
     public virtual ICollection<Tagline> Taglines { get; } = new List<Tagline>();
+}
+
+public enum registration_mode_enum
+{
+    closed = 0,
+    require_application = 1,
+    open = 2
 }

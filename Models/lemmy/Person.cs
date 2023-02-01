@@ -67,8 +67,6 @@ public partial class Person
 
     public virtual ICollection<CommentSaved> CommentSaveds { get; } = new List<CommentSaved>();
 
-    public virtual ICollection<Comment> Comments { get; } = new List<Comment>();
-
     public virtual ICollection<CommunityBlock> CommunityBlocks { get; } = new List<CommunityBlock>();
 
     public virtual ICollection<CommunityFollower> CommunityFollowers { get; } = new List<CommunityFollower>();

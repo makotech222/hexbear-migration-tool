@@ -42,13 +42,9 @@ public partial class Comment
 
     public virtual ICollection<CommentSaved> CommentSaveds { get; } = new List<CommentSaved>();
 
-    public virtual Person Creator { get; set; }
-
     public virtual Language Language { get; set; }
 
     public virtual ICollection<ModRemoveComment> ModRemoveComments { get; } = new List<ModRemoveComment>();
 
     public virtual ICollection<PersonMention> PersonMentions { get; } = new List<PersonMention>();
-
-    public virtual Post Post { get; set; }
 }
