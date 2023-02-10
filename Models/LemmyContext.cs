@@ -146,7 +146,9 @@ public partial class LemmyContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=localhost;Database=hexbear-prod-new;Username=lemmy;Password=password");
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder($"Host={Program._appSettings.LemmyHost};Port={Program._appSettings.LemmyPort};Database={Program._appSettings.LemmyDatabaseName};Username={Program._appSettings.LemmyUsername};Password={Program._appSettings.LemmyPassword}");
+        dataSourceBuilder.ConnectionStringBuilder.CommandTimeout = 60 * 30;
+        dataSourceBuilder.ConnectionStringBuilder.InternalCommandTimeout = 60 * 30;
         var dataSource = dataSourceBuilder.Build();
         optionsBuilder.UseNpgsql(dataSource);
     }

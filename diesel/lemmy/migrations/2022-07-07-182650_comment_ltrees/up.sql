@@ -78,17 +78,10 @@ set path = ct.ltree_path
 from comment_temp ct
 where c.id = ct.id;
 
--- Update the child counts
-update comment_aggregates ca set child_count = c2.child_count
-from (
-  select c.id, c.path, count(c2.id) as child_count from comment c
-  left join comment c2 on c2.path <@ c.path and c2.path != c.path
-  group by c.id
-) as c2
-where ca.comment_id = c2.id;
+-- Delete comments at a depth of > 100, otherwise the index creation below will fail
+SET session_replication_role = replica;  
+delete from comment where nlevel(path) > 100;
 
--- Delete comments at a depth of > 150, otherwise the index creation below will fail
-delete from comment where nlevel(path) > 150;
 
 -- Delete from comment where there is a missing post
 delete from comment c where not exists (
@@ -115,4 +108,14 @@ create index idx_path_gist on comment using gist (path);
 -- Drop the parent_id column
 alter table comment drop column parent_id cascade;
 
+-- Update the child counts
+update comment_aggregates ca set child_count = c2.child_count
+from (
+  select c.id, c.path, count(c2.id) as child_count from comment c
+  left join comment c2 on c2.path <@ c.path and c2.path != c.path
+  group by c.id
+) as c2
+where ca.comment_id = c2.id;
+
+SET session_replication_role = DEFAULT;
 alter table comment enable trigger all;

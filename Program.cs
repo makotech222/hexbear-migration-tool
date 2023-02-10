@@ -33,6 +33,7 @@ namespace hexbear_migration_tool
         public string LemmyDatabaseName { get; set; }
         public string LemmyUsername { get; set; }
         public string LemmyPassword { get; set; }
-        public string PictrsUrl { get; set; }
+        public string PictrsExternalUrl { get; set; }
+        public string PictrsInternalUrl { get; set; }
     }
 }

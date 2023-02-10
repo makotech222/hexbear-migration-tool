@@ -1,11 +1,9 @@
 ﻿using hexbear_migration_tool.hexbear;
-using hexbear_migration_tool.lemmy;
 using hexbear_migration_tool.Models.lemmy;
 using Microsoft.EntityFrameworkCore;
 using Svg;
 using System.Diagnostics;
 using System.Drawing.Imaging;
-using System.Linq;
 using System.Text.Json;
 
 namespace hexbear_migration_tool
@@ -13,6 +11,7 @@ namespace hexbear_migration_tool
     internal class Migration
     {
         private bool _migrate_finished;
+
         public Migration()
         { }
 
@@ -26,8 +25,9 @@ namespace hexbear_migration_tool
             await Emojis(lemmyDb);
             await CommunitySettings(lemmyDb, hexbearDb);
             await Pronouns(lemmyDb, hexbearDb);
-            //Add update local_person.theme (hexbear doesn't exist)
-            //Update all posts/comments to english?
+            await Site(lemmyDb, hexbearDb);
+            await Language(lemmyDb, hexbearDb);
+            await Theme(lemmyDb, hexbearDb);
             trans.Commit();
         }
 
@@ -81,7 +81,7 @@ namespace hexbear_migration_tool
                     {
                         { new StreamContent(stream), "images[]", path }
                     };
-                    var res = await httpClient.PostAsync($"{Program._appSettings.PictrsUrl}/image", content);
+                    var res = await httpClient.PostAsync($"{Program._appSettings.PictrsExternalUrl}/image", content);
                     string response = await res.Content.ReadAsStringAsync();
                     try
                     {
@@ -91,7 +91,7 @@ namespace hexbear_migration_tool
                             LocalSiteId = localSiteId,
                             Category = category.name,
                             AltText = name,
-                            ImageUrl = $"/pictrs/image/{link}",
+                            ImageUrl = $"{Program._appSettings.PictrsInternalUrl}/pictrs/image/{link}",
                             Shortcode = name,
                         };
                         lemmyDb.CustomEmojis.Add(customEmoji);
@@ -121,13 +121,61 @@ namespace hexbear_migration_tool
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Community Settings: End");
         }
 
+        public async Task Site(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: Begin");
+            var site = lemmyDb.LocalSites.First();
+            site.FederationEnabled = false;
+            await lemmyDb.SaveChangesAsync();
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: End");
+        }
+
+        public async Task Theme(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Theme: Begin");
+            var people = lemmyDb.LocalUsers.ToList();
+            foreach (var person in people)
+            {
+                person.Theme = "darkly";
+            }
+            await lemmyDb.SaveChangesAsync();
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Theme: End");
+        }
+
+        public async Task Language(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Language: Begin");
+            var people = lemmyDb.LocalUsers.ToList();
+            foreach (var person in people)
+            {
+                var lang = new LocalUserLanguage()
+                {
+                    LanguageId = 37,
+                    LocalUserId = person.Id
+                };
+                //lemmyDb.LocalUserLanguages.Add(lang);
+                person.InterfaceLanguage = "en";
+            }
+            var site = lemmyDb.Sites.First();
+            var sl = new SiteLanguage()
+            {
+                LanguageId = 37,
+                SiteId = site.Id
+            };
+            //lemmyDb.SiteLanguages.Add(sl);
+            await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.post SET language_id = 37");
+            await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.comment SET language_id = 37");
+            await lemmyDb.SaveChangesAsync();
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Language: End");
+        }
+
         public async Task Pronouns(LemmyContext lemmyDb, HexbearContext hexbearDb)
         {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: Begin");
             var usertags = hexbearDb.UserTags.ToList();
             foreach (var tag in usertags)
             {
-                var pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",") ?? new string[] { "none/use name"};
+                var pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",") ?? new string[] { "none/use name" };
                 var person = await lemmyDb.People.FindAsync(tag.UserId);
                 person.DisplayName = $"{person.Name} [{String.Join(",", pronouns)}]";
             }
@@ -146,7 +194,8 @@ namespace hexbear_migration_tool
             cmd.StartInfo.CreateNoWindow = true;
             cmd.StartInfo.UseShellExecute = false;
             cmd.Start();
-            cmd.OutputDataReceived += (sender, e) => { 
+            cmd.OutputDataReceived += (sender, e) =>
+            {
                 Console.WriteLine(e.Data);
                 if (e?.Data == null)
                     return;

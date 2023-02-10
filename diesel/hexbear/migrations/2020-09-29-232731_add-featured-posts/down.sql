@@ -344,6 +344,3 @@ UNION ALL
      LEFT JOIN community_settings cs ON p.community_id = cs.id
      LEFT JOIN hexbear.post_stat cps ON cps.post_id = p.id;
 
-ALTER TABLE hexbear.post_view_fast
-    OWNER TO postgres;
-
