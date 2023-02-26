@@ -12,5 +12,8 @@ create table custom_emoji (
 create table custom_emoji_keyword (
   id serial primary key,
   custom_emoji_id int references custom_emoji on update cascade on delete cascade not null,
-  keyword varchar(128) not null
+  keyword varchar(128) not null,
+  UNIQUE (custom_emoji_id, keyword)
 );
+
+create index idx_custom_emoji_category on custom_emoji (category);

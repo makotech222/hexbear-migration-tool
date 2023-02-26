@@ -53,7 +53,6 @@ namespace hexbear_migration_tool
             await lemmyDb.CustomEmojis.ExecuteDeleteAsync();
             await lemmyDb.CustomEmojiKeywords.ExecuteDeleteAsync();
 
-            var blacklistedGifs = new List<string>() { "lea-bounce.gif", "congratulations.gif", "wall-talk.gif", "spongebob-party.gif", "blob-on-fire.gif" };
             var httpClient = new HttpClient();
             var localSiteId = (await lemmyDb.LocalSites.FirstAsync()).Id;
             var emojiCategories = JsonSerializer.Deserialize<List<EmojiCategory>>(File.ReadAllText("emojis.json"));
@@ -71,10 +70,6 @@ namespace hexbear_migration_tool
                     {
                         ConvertSvg(name);
                         path = name + ".png";
-                    }
-                    if (blacklistedGifs.Contains(emoji))
-                    {
-                        path = "blank.png";
                     }
                     using var stream = System.IO.File.OpenRead($"emojis/{path}");
                     using var content = new MultipartFormDataContent
@@ -124,8 +119,11 @@ namespace hexbear_migration_tool
         public async Task Site(LemmyContext lemmyDb, HexbearContext hexbearDb)
         {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: Begin");
-            var site = lemmyDb.LocalSites.First();
-            site.FederationEnabled = false;
+            var localSite = lemmyDb.LocalSites.First();
+            localSite.FederationEnabled = false;
+            localSite.ActorNameMaxLength = 80;
+            var site = lemmyDb.Sites.First();
+            //site.Icon = "http://localhost:1234/static/assets/icons/hexbear_head.svg"; // Double check when running live
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: End");
         }
@@ -145,26 +143,20 @@ namespace hexbear_migration_tool
         public async Task Language(LemmyContext lemmyDb, HexbearContext hexbearDb)
         {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Language: Begin");
+            await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.post SET language_id = 37");
+            await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.comment SET language_id = 37");
+            await lemmyDb.Database.ExecuteSqlRawAsync("Delete from public.local_user_language where language_id <> 37");
+            await lemmyDb.Database.ExecuteSqlRawAsync("Delete from public.site_language where language_id <> 37");
+            await lemmyDb.Database.ExecuteSqlRawAsync(@"
+SET session_replication_role = replica;  
+Delete from public.language
+where id <> 37;
+SET session_replication_role = DEFAULT;");
             var people = lemmyDb.LocalUsers.ToList();
             foreach (var person in people)
             {
-                var lang = new LocalUserLanguage()
-                {
-                    LanguageId = 37,
-                    LocalUserId = person.Id
-                };
-                //lemmyDb.LocalUserLanguages.Add(lang);
                 person.InterfaceLanguage = "en";
             }
-            var site = lemmyDb.Sites.First();
-            var sl = new SiteLanguage()
-            {
-                LanguageId = 37,
-                SiteId = site.Id
-            };
-            //lemmyDb.SiteLanguages.Add(sl);
-            await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.post SET language_id = 37");
-            await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.comment SET language_id = 37");
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Language: End");
         }
@@ -172,11 +164,14 @@ namespace hexbear_migration_tool
         public async Task Pronouns(LemmyContext lemmyDb, HexbearContext hexbearDb)
         {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: Begin");
-            var usertags = hexbearDb.UserTags.ToList();
-            foreach (var tag in usertags)
-            {
-                var pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",") ?? new string[] { "none/use name" };
-                var person = await lemmyDb.People.FindAsync(tag.UserId);
+            var people = lemmyDb.People.ToList();
+            var usertags = hexbearDb.UserTags.ToDictionary(x => x.UserId, x => x);
+            foreach (var person in people) {
+                var tag = usertags.ContainsKey(person.Id) ? usertags[person.Id] : null;
+                string[] pronouns = new string[] { "none/use name" };
+                if (tag != null) {
+                    pronouns = JsonSerializer.Deserialize<UserTagJSON>(tag.Tags)?.pronouns?.Split(",") ?? new string[] { "none/use name" };
+                }
                 person.DisplayName = $"{person.Name} [{String.Join(",", pronouns)}]";
             }
             await lemmyDb.SaveChangesAsync();
