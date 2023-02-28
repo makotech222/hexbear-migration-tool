@@ -144,6 +144,8 @@ public partial class LemmyContext : DbContext
 
     public virtual DbSet<Tagline> Taglines { get; set; }
 
+    public virtual DbSet<BanId> BanIds { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var dataSourceBuilder = new NpgsqlDataSourceBuilder($"Host={Program._appSettings.LemmyHost};Port={Program._appSettings.LemmyPort};Database={Program._appSettings.LemmyDatabaseName};Username={Program._appSettings.LemmyUsername};Password={Program._appSettings.LemmyPassword}");
@@ -2174,6 +2176,44 @@ public partial class LemmyContext : DbContext
             entity.HasOne(d => d.LocalSite).WithMany(p => p.Taglines)
                 .HasForeignKey(d => d.LocalSiteId)
                 .HasConstraintName("tagline_local_site_id_fkey");
+        });
+
+        modelBuilder.Entity<BanId>(entity =>
+        {
+            entity.ToTable("ban_id", "hexbear");
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+
+            entity.Property(e => e.AliasedTo).HasColumnName("aliased_to");
+
+            entity.Property(e => e.Created)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created")
+                .HasDefaultValueSql("now()");
+
+            entity.HasOne(d => d.AliasedToNavigation)
+                .WithMany(p => p.InverseAliasedToNavigation)
+                .HasForeignKey(d => d.AliasedTo)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("ban_id_aliased_to_fkey");
+
+            entity.HasMany(d => d.Uids)
+                .WithMany(p => p.Bids)
+                .UsingEntity<Dictionary<string, object>>(
+                    "UserBanId",
+                    l => l.HasOne<Person>().WithMany().HasForeignKey("Uid").HasConstraintName("user_ban_id_uid_fkey"),
+                    r => r.HasOne<BanId>().WithMany().HasForeignKey("Bid").HasConstraintName("user_ban_id_bid_fkey"),
+                    j => {
+                        j.HasKey("Bid", "Uid").HasName("user_ban_id_pkey");
+
+                        j.ToTable("user_ban_id", "hexbear");
+
+                        j.IndexerProperty<Guid>("Bid").HasColumnName("bid");
+
+                        j.IndexerProperty<int>("Uid").HasColumnName("uid");
+                    });
         });
 
         OnModelCreatingPartial(modelBuilder);

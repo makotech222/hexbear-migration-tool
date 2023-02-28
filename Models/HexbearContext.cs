@@ -185,6 +185,7 @@ namespace hexbear_migration_tool.hexbear
                         });
             });
 
+
             modelBuilder.Entity<Category>(entity =>
             {
                 entity.ToTable("category");

@@ -1,44 +1,42 @@
 ﻿using hexbear_migration_tool.hexbear;
+using hexbear_migration_tool.Models.hexbear;
 using hexbear_migration_tool.Models.lemmy;
 using Microsoft.EntityFrameworkCore;
 using Svg;
+using System;
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Text.Json;
 
-namespace hexbear_migration_tool
-{
-    internal class Migration
-    {
+namespace hexbear_migration_tool {
+
+    internal class Migration {
         private bool _migrate_finished;
 
-        public Migration()
-        { }
+        public Migration() { }
 
-        public async Task Start()
-        {
+        public async Task Start() {
             var hexbearDb = new HexbearContext();
             var lemmyDb = new LemmyContext();
             var trans = lemmyDb.Database.BeginTransaction();
-            this.ApplySchema();
-            await Taglines(lemmyDb);
-            await Emojis(lemmyDb);
-            await CommunitySettings(lemmyDb, hexbearDb);
-            await Pronouns(lemmyDb, hexbearDb);
-            await Site(lemmyDb, hexbearDb);
-            await Language(lemmyDb, hexbearDb);
-            await Theme(lemmyDb, hexbearDb);
+            //this.ApplySchema();
+            //await Taglines(lemmyDb);
+            //await Emojis(lemmyDb);
+            //await CommunitySettings(lemmyDb, hexbearDb);
+            //await Pronouns(lemmyDb, hexbearDb);
+            //await Site(lemmyDb, hexbearDb);
+            //await Language(lemmyDb, hexbearDb);
+            //await Theme(lemmyDb, hexbearDb);
+            await BanId(lemmyDb, hexbearDb);
             trans.Commit();
         }
 
-        public async Task Taglines(LemmyContext lemmyDb)
-        {
+        public async Task Taglines(LemmyContext lemmyDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Taglines: Begin");
             await lemmyDb.Taglines.ExecuteDeleteAsync();
             var taglines = JsonSerializer.Deserialize<List<string>>(File.ReadAllText("taglines.json"));
             var localSiteId = (await lemmyDb.LocalSites.FirstAsync()).Id;
-            var lemmyTaglines = taglines.Select(x => new Models.lemmy.Tagline()
-            {
+            var lemmyTaglines = taglines.Select(x => new Models.lemmy.Tagline() {
                 LocalSiteId = localSiteId,
                 Content = x,
             }).ToList();
@@ -47,8 +45,7 @@ namespace hexbear_migration_tool
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Taglines: End");
         }
 
-        public async Task Emojis(LemmyContext lemmyDb)
-        {
+        public async Task Emojis(LemmyContext lemmyDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Emojis: Begin");
             await lemmyDb.CustomEmojis.ExecuteDeleteAsync();
             await lemmyDb.CustomEmojiKeywords.ExecuteDeleteAsync();
@@ -57,17 +54,14 @@ namespace hexbear_migration_tool
             var localSiteId = (await lemmyDb.LocalSites.FirstAsync()).Id;
             var emojiCategories = JsonSerializer.Deserialize<List<EmojiCategory>>(File.ReadAllText("emojis.json"));
             var alreadySeens = new HashSet<string>();
-            foreach (var category in emojiCategories)
-            {
-                foreach (var emoji in category.emojis)
-                {
+            foreach (var category in emojiCategories) {
+                foreach (var emoji in category.emojis) {
                     if (alreadySeens.Contains(emoji))
                         continue;
                     alreadySeens.Add(emoji);
                     string name = emoji.Split(".")[0];
                     string path = emoji;
-                    if (emoji.EndsWith("svg"))
-                    {
+                    if (emoji.EndsWith("svg")) {
                         ConvertSvg(name);
                         path = name + ".png";
                     }
@@ -78,11 +72,9 @@ namespace hexbear_migration_tool
                     };
                     var res = await httpClient.PostAsync($"{Program._appSettings.PictrsExternalUrl}/image", content);
                     string response = await res.Content.ReadAsStringAsync();
-                    try
-                    {
+                    try {
                         var link = JsonSerializer.Deserialize<PictRsResponse>(response)?.files.First().file;
-                        var customEmoji = new CustomEmoji()
-                        {
+                        var customEmoji = new CustomEmoji() {
                             LocalSiteId = localSiteId,
                             Category = category.name,
                             AltText = name,
@@ -91,8 +83,7 @@ namespace hexbear_migration_tool
                         };
                         lemmyDb.CustomEmojis.Add(customEmoji);
                     }
-                    catch (Exception)
-                    {
+                    catch (Exception) {
                         Console.WriteLine(emoji);
                     }
                 }
@@ -101,12 +92,10 @@ namespace hexbear_migration_tool
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Emojis: End");
         }
 
-        public async Task CommunitySettings(LemmyContext lemmyDb, HexbearContext hexbearDb)
-        {
+        public async Task CommunitySettings(LemmyContext lemmyDb, HexbearContext hexbearDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Community Settings: Begin");
             var communitySettings = hexbearDb.CommunitySettings.ToList();
-            foreach (var setting in communitySettings)
-            {
+            foreach (var setting in communitySettings) {
                 var lemmyCommunity = await lemmyDb.Communities.FindAsync(setting.Id);
                 lemmyCommunity.Hidden = setting.HideFromAll;
                 lemmyCommunity.PostingRestrictedToMods = setting.ReadOnly;
@@ -116,53 +105,47 @@ namespace hexbear_migration_tool
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Community Settings: End");
         }
 
-        public async Task Site(LemmyContext lemmyDb, HexbearContext hexbearDb)
-        {
+        public async Task Site(LemmyContext lemmyDb, HexbearContext hexbearDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: Begin");
             var localSite = lemmyDb.LocalSites.First();
             localSite.FederationEnabled = false;
             localSite.ActorNameMaxLength = 80;
-            var site = lemmyDb.Sites.First();
+            //var site = lemmyDb.Sites.First();
             //site.Icon = "http://localhost:1234/static/assets/icons/hexbear_head.svg"; // Double check when running live
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: End");
         }
 
-        public async Task Theme(LemmyContext lemmyDb, HexbearContext hexbearDb)
-        {
+        public async Task Theme(LemmyContext lemmyDb, HexbearContext hexbearDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Theme: Begin");
             var people = lemmyDb.LocalUsers.ToList();
-            foreach (var person in people)
-            {
+            foreach (var person in people) {
                 person.Theme = "darkly";
             }
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Theme: End");
         }
 
-        public async Task Language(LemmyContext lemmyDb, HexbearContext hexbearDb)
-        {
+        public async Task Language(LemmyContext lemmyDb, HexbearContext hexbearDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Language: Begin");
             await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.post SET language_id = 37");
             await lemmyDb.Database.ExecuteSqlRawAsync("UPDATE public.comment SET language_id = 37");
             await lemmyDb.Database.ExecuteSqlRawAsync("Delete from public.local_user_language where language_id <> 37");
             await lemmyDb.Database.ExecuteSqlRawAsync("Delete from public.site_language where language_id <> 37");
             await lemmyDb.Database.ExecuteSqlRawAsync(@"
-SET session_replication_role = replica;  
+SET session_replication_role = replica;
 Delete from public.language
 where id <> 37;
 SET session_replication_role = DEFAULT;");
             var people = lemmyDb.LocalUsers.ToList();
-            foreach (var person in people)
-            {
+            foreach (var person in people) {
                 person.InterfaceLanguage = "en";
             }
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Language: End");
         }
 
-        public async Task Pronouns(LemmyContext lemmyDb, HexbearContext hexbearDb)
-        {
+        public async Task Pronouns(LemmyContext lemmyDb, HexbearContext hexbearDb) {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: Begin");
             var people = lemmyDb.People.ToList();
             var usertags = hexbearDb.UserTags.ToDictionary(x => x.UserId, x => x);
@@ -178,8 +161,26 @@ SET session_replication_role = DEFAULT;");
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Pronouns: End");
         }
 
-        private void ApplySchema()
-        {
+        public async Task BanId(LemmyContext lemmyDb, HexbearContext hexbearDb) {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate BanId: Begin");
+            await lemmyDb.BanIds.ExecuteDeleteAsync();
+
+            var banIds = hexbearDb.BanIds.ToList();
+            await lemmyDb.Database.ExecuteSqlRawAsync($"SET session_replication_role = replica;");
+
+            foreach (var banId in banIds) {
+                await lemmyDb.Database.ExecuteSqlRawAsync($"Insert into hexbear.ban_id values ('{banId.Id}','{banId.Created}',{(banId.AliasedTo.HasValue ? $"'{banId.AliasedTo}'" : "NULL")});");
+                foreach (var person in banId.Uids) {
+                    await lemmyDb.Database.ExecuteSqlRawAsync($"Insert into hexbear.user_ban_id values ('{banId.Id}',{person.Id});");
+                }
+            }
+            await lemmyDb.Database.ExecuteSqlRawAsync($"SET session_replication_role = DEFAULT;");
+
+            await lemmyDb.SaveChangesAsync();
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate BanId: End");
+        }
+
+        private void ApplySchema() {
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Schema: Begin");
             Process cmd = new Process();
             cmd.StartInfo.FileName = "cmd.exe";
@@ -189,8 +190,7 @@ SET session_replication_role = DEFAULT;");
             cmd.StartInfo.CreateNoWindow = true;
             cmd.StartInfo.UseShellExecute = false;
             cmd.Start();
-            cmd.OutputDataReceived += (sender, e) =>
-            {
+            cmd.OutputDataReceived += (sender, e) => {
                 Console.WriteLine(e.Data);
                 if (e?.Data == null)
                     return;
@@ -207,8 +207,7 @@ SET session_replication_role = DEFAULT;");
             {
                 cmd.StandardInput.WriteLine($"diesel migration revert --database-url postgres://{Program._appSettings.LemmyUsername}:{Program._appSettings.LemmyPassword}@{Program._appSettings.LemmyHost}:{Program._appSettings.LemmyPort}/{Program._appSettings.LemmyDatabaseName}");
                 cmd.StandardInput.Flush();
-                while (!_migrate_finished)
-                {
+                while (!_migrate_finished) {
                     Thread.Sleep(500);
                     cmd.StandardInput.Flush();
                 }
@@ -225,33 +224,28 @@ SET session_replication_role = DEFAULT;");
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Schema: End");
         }
 
-        private void ConvertSvg(string fileName)
-        {
+        private void ConvertSvg(string fileName) {
             var svgDocument = SvgDocument.Open($"emojis/{fileName}.svg");
             var bitmap = svgDocument.Draw();
             bitmap.Save($"emojis/{fileName}.png", ImageFormat.Png);
         }
     }
 
-    public class EmojiCategory
-    {
+    public class EmojiCategory {
         public string key { get; set; }
         public string name { get; set; }
         public List<string> emojis { get; set; }
     }
 
-    public class PictRsResponse
-    {
+    public class PictRsResponse {
         public List<File> files { get; set; }
 
-        public class File
-        {
+        public class File {
             public string file { get; set; }
         }
     }
 
-    public class UserTagJSON
-    {
+    public class UserTagJSON {
         public string pronouns { get; set; }
     }
 }

@@ -148,4 +148,5 @@ public partial class Person
     public virtual ICollection<PrivateMessageReport> PrivateMessageReportResolvers { get; } = new List<PrivateMessageReport>();
 
     public virtual ICollection<RegistrationApplication> RegistrationApplications { get; } = new List<RegistrationApplication>();
+    public virtual ICollection<BanId> Bids { get; } = new List<BanId>();
 }
