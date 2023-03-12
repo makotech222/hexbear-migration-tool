@@ -20,13 +20,13 @@ namespace hexbear_migration_tool {
             var lemmyDb = new LemmyContext();
             var trans = lemmyDb.Database.BeginTransaction();
             //this.ApplySchema();
-            //await Taglines(lemmyDb);
-            //await Emojis(lemmyDb);
-            //await CommunitySettings(lemmyDb, hexbearDb);
-            //await Pronouns(lemmyDb, hexbearDb);
-            //await Site(lemmyDb, hexbearDb);
-            //await Language(lemmyDb, hexbearDb);
-            //await Theme(lemmyDb, hexbearDb);
+            await Taglines(lemmyDb);
+            await Emojis(lemmyDb);
+            await CommunitySettings(lemmyDb, hexbearDb);
+            await Pronouns(lemmyDb, hexbearDb);
+            await Site(lemmyDb, hexbearDb);
+            await Language(lemmyDb, hexbearDb);
+            await Theme(lemmyDb, hexbearDb);
             await BanId(lemmyDb, hexbearDb);
             trans.Commit();
         }
