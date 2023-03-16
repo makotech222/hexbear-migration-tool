@@ -1,6 +1,7 @@
 ﻿global using System;
 global using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace hexbear_migration_tool
 {
@@ -35,5 +36,8 @@ namespace hexbear_migration_tool
         public string LemmyPassword { get; set; }
         public string PictrsExternalUrl { get; set; }
         public string PictrsInternalUrl { get; set; }
+
+        [JsonConstructor]
+        public AppSettings() { }
     }
 }
