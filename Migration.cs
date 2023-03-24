@@ -28,6 +28,7 @@ namespace hexbear_migration_tool {
             await Language(lemmyDb, hexbearDb);
             await Theme(lemmyDb, hexbearDb);
             await BanId(lemmyDb, hexbearDb);
+            await SiteMods(lemmyDb, hexbearDb);
             trans.Commit();
         }
 
@@ -178,6 +179,20 @@ SET session_replication_role = DEFAULT;");
 
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate BanId: End");
+        }
+
+        public async Task SiteMods(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Sitemods: Begin");
+            var sitemods = hexbearDb.Users.Where(x => x.Sitemod).ToList();
+            foreach (var mod in sitemods)
+            {
+                var person = lemmyDb.People.First(x => x.Id == mod.Id);
+                person.Admin = true;
+            }
+
+            await lemmyDb.SaveChangesAsync();
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Sitemods: End");
         }
 
         private void ApplySchema() {
