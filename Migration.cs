@@ -29,6 +29,8 @@ namespace hexbear_migration_tool {
             await Theme(lemmyDb, hexbearDb);
             await BanId(lemmyDb, hexbearDb);
             await SiteMods(lemmyDb, hexbearDb);
+            await FeaturedPosts(lemmyDb, hexbearDb);
+            await DataFixes(lemmyDb, hexbearDb);
             trans.Commit();
         }
 
@@ -111,8 +113,6 @@ namespace hexbear_migration_tool {
             var localSite = lemmyDb.LocalSites.First();
             localSite.FederationEnabled = false;
             localSite.ActorNameMaxLength = 80;
-            //var site = lemmyDb.Sites.First();
-            //site.Icon = "http://localhost:1234/static/assets/icons/hexbear_head.svg"; // Double check when running live
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Site Settings: End");
         }
@@ -193,6 +193,20 @@ SET session_replication_role = DEFAULT;");
 
             await lemmyDb.SaveChangesAsync();
             Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Sitemods: End");
+        }
+
+        public async Task FeaturedPosts(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Featured Posts: Begin");
+            await lemmyDb.Database.ExecuteSqlRawAsync($"Update public.Post set featured_community = false");
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate Featured Posts: End");
+        }
+
+        public async Task DataFixes(LemmyContext lemmyDb, HexbearContext hexbearDb)
+        {
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate DataFixes: Begin");
+            await lemmyDb.Database.ExecuteSqlRawAsync($"Update public.post set ap_id = 'https://www.hexbear.net/post/154476' where id = 154476");
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()} Migrate DataFixes: End");
         }
 
         private void ApplySchema() {
