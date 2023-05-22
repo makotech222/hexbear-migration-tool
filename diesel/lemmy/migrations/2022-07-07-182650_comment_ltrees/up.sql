@@ -119,3 +119,5 @@ where ca.comment_id = c2.id;
 
 SET session_replication_role = DEFAULT;
 alter table comment enable trigger all;
+
+--Insert into __diesel_schema_migrations Values('20220707182650');
