@@ -64,7 +64,7 @@ public partial class LocalSite
 
 public enum registration_mode_enum
 {
-    closed = 0,
-    require_application = 1,
-    open = 2
+    Closed = 0,
+    RequireApplication = 1,
+    Open = 2
 }

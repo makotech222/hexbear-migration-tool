@@ -17,10 +17,6 @@ public partial class LocalUser
 
     public string Theme { get; set; }
 
-    public short DefaultSortType { get; set; }
-
-    public short DefaultListingType { get; set; }
-
     public string InterfaceLanguage { get; set; }
 
     public bool? ShowAvatars { get; set; }
@@ -40,6 +36,10 @@ public partial class LocalUser
     public bool EmailVerified { get; set; }
 
     public bool AcceptedApplication { get; set; }
+
+    public string Totp2faSecret { get; set; }
+
+    public string Totp2faUrl { get; set; }
 
     public virtual ICollection<EmailVerification> EmailVerifications { get; } = new List<EmailVerification>();
 
