@@ -1056,12 +1056,10 @@ public partial class LemmyContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AcceptedApplication).HasColumnName("accepted_application");
-            entity.Property(e => e.Totp2faSecret).HasColumnName("totp_2fa_secret");
-            entity.Property(e => e.Totp2faUrl).HasColumnName("totp_2fa_url");
-            //entity.Property(e => e.DefaultListingType)
-            //    .HasDefaultValueSql("1")
-            //    .HasColumnName("default_listing_type");
-            //entity.Property(e => e.DefaultSortType).HasColumnName("default_sort_type");
+            entity.Property(e => e.DefaultListingType)
+                .HasDefaultValueSql("1")
+                .HasColumnName("default_listing_type");
+            entity.Property(e => e.DefaultSortType).HasColumnName("default_sort_type");
             entity.Property(e => e.Email).HasColumnName("email");
             entity.Property(e => e.EmailVerified).HasColumnName("email_verified");
             entity.Property(e => e.InterfaceLanguage)
