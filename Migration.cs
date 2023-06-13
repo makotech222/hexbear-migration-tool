@@ -65,8 +65,9 @@ namespace hexbear_migration_tool {
                     string name = emoji.Split(".")[0];
                     string path = emoji;
                     if (emoji.EndsWith("svg")) {
-                        ConvertSvg(name);
-                        path = name + ".png";
+                        //ConvertSvg(name);
+                        //path = name + ".png";
+                        throw new Exception($"Shouldn't be any svgs left, wtf. {emoji}");
                     }
                     using var stream = System.IO.File.OpenRead($"emojis/{path}");
                     using var content = new MultipartFormDataContent
